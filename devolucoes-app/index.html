@@ -1,0 +1,626 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Consulta de Devoluções</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23D7DF1A'/%3E%3Ctext x='32' y='44' font-family='Arial' font-weight='700' font-size='36' text-anchor='middle' fill='%232A5BA9'%3Eg%3C/text%3E%3C/svg%3E">
+<style>
+  :root {
+    --blue: #2a5ba9; --blue-700: #234d91; --blue-50: #eaf0fa;
+    --lime: #d7df1a; --lime-ink: #2a5ba9;
+    --bg: #eef2f8; --card: #ffffff; --line: #e2e8f1; --line-soft: #eef2f7;
+    --ink: #1c2433; --muted: #5d6879; --faint: #8a94a4;
+    --ok: #1e8a5a; --ok-bg: #e5f4ec;
+    --warn: #b06a0b; --warn-bg: #fdf1df;
+    --err: #c0394a; --err-line: #f5cdd3;
+    --radius: 16px;
+    --side: 236px;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+    font: 14px/1.5 Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+  button, input, textarea { font: inherit; }
+
+  /* ---------- layout ---------- */
+  .app { display: flex; min-height: 100vh; }
+  aside { width: var(--side); flex: none; background: var(--blue); color: #fff; display: flex; flex-direction: column;
+    padding: 22px 14px 14px; position: sticky; top: 0; height: 100vh; transition: width .2s ease; }
+  main { flex: 1; min-width: 0; padding: 28px 32px 56px; }
+  .inner { max-width: 1240px; }
+
+  /* ---------- sidebar ---------- */
+  .brand { display: flex; align-items: center; gap: 12px; padding: 0 2px 22px; }
+  .logo { width: 38px; height: 38px; flex: none; border-radius: 11px; background: var(--lime); color: var(--lime-ink);
+    display: grid; place-items: center; font-weight: 700; font-size: 20px; line-height: 1; padding-bottom: 3px; }
+  .brand-txt { font-weight: 700; font-size: 15.5px; line-height: 1.2; white-space: nowrap; }
+  .brand-txt span { display: block; color: var(--lime); }
+
+  .seg { display: flex; background: rgba(255,255,255,.1); border-radius: 12px; padding: 0; gap: 0; }
+  .seg button { flex: 1; border: 0; background: transparent; color: #fff; font-weight: 500; font-size: 13.5px;
+    padding: 9px 8px; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; }
+  .seg button.on { background: var(--lime); color: var(--lime-ink); font-weight: 700; }
+  .seg button:not(.on):hover { background: rgba(255,255,255,.08); }
+  .seg svg { width: 15px; height: 15px; display: none; }
+
+  .side-foot { margin-top: auto; display: flex; flex-direction: column; gap: 10px; }
+  .collapse { display: flex; align-items: center; gap: 8px; border: 0; background: rgba(255,255,255,.08); color: rgba(255,255,255,.88);
+    border-radius: 12px; padding: 9px 14px; cursor: pointer; font-size: 13px; }
+  .collapse:hover { background: rgba(255,255,255,.14); }
+  .collapse svg { width: 14px; height: 14px; transition: transform .2s; }
+  .sep { height: 1px; background: rgba(255,255,255,.14); }
+  .user { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,.08); border-radius: 12px; padding: 10px 12px; min-width: 0; }
+  .avatar { width: 32px; height: 32px; flex: none; border-radius: 50%; background: #55684f; color: var(--lime);
+    display: grid; place-items: center; font-size: 12px; font-weight: 700; letter-spacing: .02em; }
+  .user-txt { min-width: 0; }
+  .user-name { font-weight: 700; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .user-mail { font-size: 12px; color: rgba(255,255,255,.75); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* collapsed */
+  .app.mini aside { width: 78px; }
+  .app.mini .brand-txt, .app.mini .seg .lbl, .app.mini .collapse .lbl, .app.mini .user-txt { display: none; }
+  .app.mini .brand { justify-content: center; }
+  .app.mini .seg { flex-direction: column; }
+  .app.mini .seg svg { display: block; width: 18px; height: 18px; }
+  .app.mini .seg button { padding: 10px 0; }
+  .app.mini .collapse { justify-content: center; padding: 10px 0; }
+  .app.mini .collapse svg { transform: rotate(180deg); }
+  .app.mini .user { justify-content: center; padding: 8px 0; }
+
+  /* ---------- content ---------- */
+  .page-head { margin: 2px 0 20px; }
+  .page-head h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -.01em; }
+  .page-head p { margin: 4px 0 0; color: var(--muted); }
+
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); }
+  .form { padding: 22px 24px; display: grid; grid-template-columns: 170px 1fr; gap: 18px 22px; }
+  label { display: block; font-weight: 600; font-size: 13px; margin-bottom: 7px; }
+  .hint { color: var(--faint); font-size: 12.5px; margin-top: 7px; }
+  .hint b { color: var(--blue); }
+  input[type=text], input[type=search], textarea {
+    width: 100%; color: var(--ink); background: #f7f9fc; border: 1px solid var(--line); border-radius: 12px; padding: 10px 13px; outline: none; transition: border-color .15s, box-shadow .15s, background .15s; }
+  input:focus, textarea:focus { background: #fff; border-color: var(--blue); box-shadow: 0 0 0 4px rgba(42,91,169,.12); }
+  #filial { font-size: 20px; font-weight: 700; letter-spacing: .08em; color: var(--blue); font-variant-numeric: tabular-nums; }
+  textarea { min-height: 138px; resize: vertical; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 13px; line-height: 1.55; }
+  .actions { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding-top: 4px; border-top: 1px solid var(--line-soft); padding-top: 16px; }
+  .btn { border-radius: 12px; padding: 10px 18px; cursor: pointer; font-weight: 600; font-size: 13.5px; border: 1px solid var(--line); background: #fff; color: var(--ink); display: inline-flex; align-items: center; gap: 8px; }
+  .btn:hover { background: #f5f7fb; }
+  .btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .btn.primary:hover { background: var(--blue-700); }
+  .btn.sm { padding: 6px 12px; font-size: 12.5px; border-radius: 10px; }
+  .btn:disabled { opacity: .55; cursor: not-allowed; }
+  .btn svg { width: 15px; height: 15px; }
+  .kbd { margin-left: auto; color: var(--faint); font-size: 12px; }
+  .kbd code { font-family: inherit; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; font-size: 11.5px; color: var(--muted); }
+
+  .notice { margin-top: 16px; padding: 18px 22px; }
+  .notice h3 { margin: 0 0 4px; font-size: 15.5px; font-weight: 700; }
+  .notice p { margin: 0; color: var(--muted); }
+  .notice.err { border-color: var(--err-line); }
+  .notice.warn { border-color: #f3dcb6; background: #fffaf2; }
+  .loading { display: flex; align-items: center; gap: 14px; }
+  #resultado .notice { margin: 0 0 14px; }
+  #resultado .notice.bad { border: 2px solid var(--err); background: #fff5f6; }
+  #resultado .notice.bad h3 { color: var(--err); }
+  #filial.alerta { border-color: var(--err); background: #fff5f6; box-shadow: 0 0 0 4px rgba(192,57,74,.12); }
+  .spin { width: 22px; height: 22px; flex: none; border: 3px solid var(--blue-50); border-top-color: var(--blue); border-radius: 50%; animation: s .8s linear infinite; }
+  @keyframes s { to { transform: rotate(360deg); } }
+
+  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin: 18px 0 14px; }
+  .tile { padding: 16px 20px; position: relative; overflow: hidden; }
+  .tile::before { content: ""; position: absolute; left: 0; top: 16px; bottom: 16px; width: 4px; border-radius: 0 4px 4px 0; background: var(--blue); }
+  .tile.ok::before { background: var(--ok); } .tile.warn::before { background: #e7a23a; } .tile.bad::before { background: var(--err); }
+  button.tile { font: inherit; color: inherit; text-align: left; width: 100%; cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+  button.tile:hover { border-color: #c5d1e4; }
+  button.tile.on { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(42,91,169,.10); }
+  .tabs { display: flex; flex-wrap: wrap; gap: 2px; background: var(--bg); border-radius: 12px; padding: 3px; }
+  .tabs button { border: 0; background: transparent; color: var(--muted); font-weight: 600; font-size: 13px; padding: 7px 12px; border-radius: 10px; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+  .tabs button:hover { color: var(--blue); }
+  .tabs button.on { background: var(--lime); color: var(--lime-ink); }
+  .tabs .n { font-size: 11.5px; background: rgba(42,91,169,.10); border-radius: 999px; padding: 0 7px; line-height: 18px; }
+  .tab-desc { padding: 10px 20px; font-size: 12.5px; color: var(--muted); background: #fbfcfe; border-bottom: 1px solid var(--line-soft); }
+  .badge { display: inline-block; font-size: 11.5px; font-weight: 700; letter-spacing: .02em; border-radius: 999px; padding: 2px 9px; }
+  .badge.bad { color: var(--err); background: #fbe8eb; }
+  .tile .k { color: var(--muted); font-size: 12.5px; font-weight: 500; }
+  .tile .v { font-size: 30px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; margin-top: 2px; line-height: 1.2; }
+  .tile .s { color: var(--faint); font-size: 12px; margin-top: 2px; }
+
+  .tcard { overflow: hidden; }
+  .toolbar { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; padding: 16px 20px; border-bottom: 1px solid var(--line); }
+  .toolbar h2 { margin: 0; font-size: 15.5px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+  .pill { font-size: 12px; font-weight: 600; color: var(--blue); background: var(--blue-50); border-radius: 999px; padding: 2px 9px; }
+  .grp { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .search { position: relative; }
+  .search svg { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); width: 15px; height: 15px; color: var(--faint); }
+  .search input { width: 260px; padding: 7px 12px 7px 33px; border-radius: 10px; font-size: 13px; }
+  .tablewrap { overflow: auto; max-height: 62vh; }
+  table { border-collapse: separate; border-spacing: 0; width: 100%; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--line-soft); white-space: nowrap; font-size: 13.5px; }
+  th { position: sticky; top: 0; z-index: 1; background: #f6f8fc; font-size: 12px; color: var(--muted); font-weight: 600; cursor: pointer; user-select: none; border-bottom: 1px solid var(--line); }
+  th:hover { color: var(--blue); }
+  th[aria-sort=ascending]::after { content: " ↑"; color: var(--blue); }
+  th[aria-sort=descending]::after { content: " ↓"; color: var(--blue); }
+  tbody tr:hover td { background: #f8fafd; }
+  td.strong { font-weight: 600; color: var(--blue); }
+  td.mono { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 12.5px; color: var(--muted); }
+  .copy { margin-left: 6px; vertical-align: middle; border: 1px solid var(--line); background: #fff; color: var(--blue); border-radius: 7px; width: 24px; height: 24px; padding: 0; display: inline-grid; place-items: center; cursor: pointer; }
+  .copy svg { width: 13px; height: 13px; }
+  .copy:hover { background: var(--blue-50); }
+  .dash { color: #c3cad5; }
+  .empty { padding: 36px; text-align: center; color: var(--muted); }
+
+  .missing { margin-top: 14px; padding: 18px 22px; }
+  .missing-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .missing h3 { margin: 0; font-size: 15.5px; font-weight: 700; }
+  .missing p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 14px; max-height: 190px; overflow: auto; }
+  .chip { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 12.5px; padding: 4px 10px; border-radius: 999px; background: var(--warn-bg); color: var(--warn); }
+
+  /* ajuda */
+  .help { padding: 24px 26px; max-width: 760px; }
+  .help h2 { margin: 0 0 14px; font-size: 17px; }
+  .steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+  .steps li { display: flex; gap: 14px; }
+  .num { width: 28px; height: 28px; flex: none; border-radius: 9px; background: var(--lime); color: var(--lime-ink); font-weight: 700; display: grid; place-items: center; font-size: 13px; }
+  .steps b { display: block; }
+  .steps span { color: var(--muted); }
+  .help .tip { margin-top: 18px; padding: 14px 16px; background: var(--blue-50); border-radius: 12px; color: var(--blue-700); font-size: 13px; }
+
+  .toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%) translateY(8px); background: var(--ink); color: #fff;
+    padding: 9px 16px; border-radius: 10px; font-size: 13px; opacity: 0; transition: opacity .2s, transform .2s; pointer-events: none; z-index: 10; }
+  .toast.show { opacity: 1; transform: translateX(-50%); }
+  [hidden] { display: none !important; }
+
+  /* ---------- responsivo ---------- */
+  @media (max-width: 1100px) { .tiles { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 900px) {
+    .tiles { grid-template-columns: 1fr; }
+    .form { grid-template-columns: 1fr; }
+    .kbd { display: none; }
+  }
+  @media (max-width: 760px) {
+    .app { flex-direction: column; }
+    aside, .app.mini aside { width: auto; height: auto; position: static; flex-direction: row; align-items: center; gap: 12px; padding: 12px 16px; }
+    .brand { padding: 0; }
+    .app.mini .brand-txt, .app.mini .seg .lbl { display: block; }
+    .app.mini .seg { flex-direction: row; } .app.mini .seg svg { display: none; }
+    .seg { margin-left: auto; } .seg button { padding: 8px 12px; }
+    .side-foot { display: none; }
+    main { padding: 20px 16px 48px; }
+    .toolbar .grp { width: 100%; } .search input { width: 100%; } .search { flex: 1 1 100%; }
+  }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <aside>
+    <div class="brand">
+      <div class="logo">g</div>
+      <div class="brand-txt">Consulta de <span>Devoluções</span></div>
+    </div>
+    <nav class="seg" role="tablist">
+      <button type="button" class="on" data-view="consulta" role="tab" title="Consulta">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <span class="lbl">Consulta</span></button>
+      <button type="button" data-view="ajuda" role="tab" title="Como usar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14"/><circle cx="12" cy="17.5" r=".6" fill="currentColor"/></svg>
+        <span class="lbl">Como usar</span></button>
+    </nav>
+    <div class="side-foot">
+      <button type="button" class="collapse" id="btnCollapse" title="Retrair menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        <span class="lbl">Retrair</span></button>
+      <div class="sep"></div>
+      <div class="user" id="user" hidden>
+        <div class="avatar" id="avatar"></div>
+        <div class="user-txt"><div class="user-name" id="userName"></div><div class="user-mail" id="userMail"></div></div>
+      </div>
+    </div>
+  </aside>
+
+  <main><div class="inner">
+    <!-- ===== CONSULTA ===== -->
+    <section id="view-consulta">
+      <div class="page-head">
+        <h1>Consulta de devoluções</h1>
+        <p>Digite a filial e cole as notas originais para ver as notas de devolução no Protheus.</p>
+      </div>
+
+      <form class="card form" id="form" autocomplete="off">
+        <div>
+          <label for="filial">Filial</label>
+          <input type="text" id="filial" inputmode="numeric" maxlength="4" placeholder="1401" list="filiais" required>
+          <datalist id="filiais"></datalist>
+          <div class="hint">4 dígitos</div>
+        </div>
+        <div>
+          <label for="notas">Notas originais</label>
+          <textarea id="notas" placeholder="Cole aqui as notas, uma por linha ou separadas por vírgula.&#10;Pode colar do jeito que está no SQL, com aspas: '000769805', '000618887', ..."></textarea>
+          <div class="hint" id="parseInfo">Nenhuma nota informada.</div>
+        </div>
+        <div class="actions">
+          <button type="submit" class="btn primary" id="btnBuscar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            Buscar devoluções</button>
+          <button type="button" class="btn" id="btnCancelar" hidden>Cancelar</button>
+          <button type="button" class="btn" id="btnLimpar">Limpar</button>
+          <span class="kbd"><code>Ctrl</code> + <code>Enter</code> para buscar</span>
+        </div>
+      </form>
+
+      <div class="card notice loading" id="loading" hidden>
+        <div class="spin"></div>
+        <div><h3 id="loadingTit">Consultando o Protheus…</h3><p id="loadingTxt">Isso costuma levar de 15 a 60 segundos.</p></div>
+      </div>
+      <div class="card notice err" id="erro" hidden><h3 id="erroTit">Não foi possível consultar</h3><p id="erroTxt"></p></div>
+
+      <div id="resultado" hidden>
+        <div class="tiles">
+          <div class="card tile"><div class="k">Notas pesquisadas</div><div class="v" id="kPesq">0</div><div class="s" id="kFilial"></div></div>
+          <button type="button" class="card tile ok" data-tab="devolvidas"><div class="k">Com devolução</div><div class="v" id="k-devolvidas">0</div><div class="s" id="p-devolvidas"></div></button>
+          <button type="button" class="card tile bad" data-tab="canceladas"><div class="k">Canceladas</div><div class="v" id="k-canceladas">0</div><div class="s" id="p-canceladas"></div></button>
+          <button type="button" class="card tile warn" data-tab="pendentes"><div class="k">Sem devolução</div><div class="v" id="k-pendentes">0</div><div class="s" id="p-pendentes"></div></button>
+        </div>
+        <div class="card notice warn" id="truncado" hidden><h3>Resultado cortado</h3><p>A consulta chegou ao limite de 2.000 linhas. Divida a lista de notas em partes para ver tudo.</p></div>
+        <div class="card notice warn" id="naoEncBox" hidden><h3 id="naoEncTit"></h3><p id="naoEncTxt"></p></div>
+
+        <div class="card tcard">
+          <div class="toolbar">
+            <div class="tabs" id="tabs" role="tablist"></div>
+            <div class="grp">
+              <div class="search">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+                <input type="search" id="filtro" placeholder="Filtrar pedido, nota, chave…">
+              </div>
+              <button type="button" class="btn sm" id="btnCopiarTabela">Copiar tabela</button>
+              <button type="button" class="btn sm" id="btnCsv">Baixar CSV</button>
+            </div>
+          </div>
+          <div class="tab-desc" id="tabDesc"></div>
+          <div class="tablewrap">
+            <table>
+              <thead><tr id="thead"></tr></thead>
+              <tbody id="tbody"></tbody>
+            </table>
+            <div class="empty" id="vazio" hidden></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== COMO USAR ===== -->
+    <section id="view-ajuda" hidden>
+      <div class="page-head">
+        <h1>Como usar</h1>
+        <p>A mesma consulta que era feita no Metabase, sem precisar editar o SQL.</p>
+      </div>
+      <div class="card help">
+        <ol class="steps">
+          <li><div class="num">1</div><div><b>Digite a filial</b><span>Código de 4 dígitos, por exemplo 1401 ou 0302. A última filial usada fica salva.</span></div></li>
+          <li><div class="num">2</div><div><b>Cole as notas originais</b><span>Uma por linha, separadas por vírgula ou do jeito que estavam no SQL, com aspas. Zeros à esquerda são completados automaticamente e repetidas são removidas.</span></div></li>
+          <li><div class="num">3</div><div><b>Clique em Buscar devoluções</b><span>O app separa as notas em abas: <b style="display:inline">Devolvidas</b> (com nota de devolução, data, motivo e chave NFe), <b style="display:inline">Canceladas</b> (canceladas no livro fiscal, com a data do cancelamento), <b style="display:inline">Sem devolução</b> (válidas e ainda sem devolução) e, se houver, <b style="display:inline">Não encontradas</b> (número que não existe nessa filial). Os cartões de resumo também abrem as abas.</span></div></li>
+          <li><div class="num">4</div><div><b>Exporte se precisar</b><span>Use "Copiar tabela" para colar no Excel ou "Baixar CSV". A exportação usa a aba aberta e respeita o filtro.</span></div></li>
+        </ol>
+        <div class="tip">Limite de 1.000 notas por consulta. Listas grandes podem levar até 1–2 minutos, porque a busca é feita direto no Protheus.</div>
+      </div>
+    </section>
+  </div></main>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  window.addEventListener("error", function (e) {
+    try { fetch("/api/client-error", { method: "POST", body: String(e.message) + " @ " + e.filename + ":" + e.lineno }); } catch (_) {}
+  });
+
+  var $ = function (id) { return document.getElementById(id); };
+  var nf = function (n) { return Number(n || 0).toLocaleString("pt-BR"); };
+  function fmtData(v) { return /^\d{8}$/.test(v) ? v.slice(6, 8) + "/" + v.slice(4, 6) + "/" + v.slice(0, 4) : v; }
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function plural(n, s, p) { return nf(n) + " " + (n === 1 ? s : p); }
+  function store(k, v) { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (_) { return null; } }
+  var COPY_ICON = "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='9' y='9' width='11' height='11' rx='2'/><path d='M5 15V6a2 2 0 0 1 2-2h9'/></svg>";
+
+  var PED = { k: "pedido_shopify", t: "Pedido Shopify", cls: "strong" };
+  var TABS = {
+    devolvidas: {
+      t: "Devolvidas", file: "devolvidas",
+      desc: "Notas originais que já têm nota de devolução lançada no Protheus.",
+      empty: "Nenhuma nota desta lista tem devolução lançada.",
+      cols: [
+        { k: "numero_pedido_shopify", t: "Pedido Shopify", cls: "strong" },
+        { k: "filial", t: "Filial", exportOnly: true },
+        { k: "nota_original", t: "Nota original" },
+        { k: "serie_original", t: "Série orig." },
+        { k: "nota_devolucao", t: "Nota devolução" },
+        { k: "serie_devolucao", t: "Série dev." },
+        { k: "data_devolucao", t: "Data devolução", fmt: fmtData },
+        { k: "motivo_retorno", t: "Motivo retorno" },
+        { k: "chave_nfe", t: "Chave NFe", cls: "mono", copy: true }
+      ]
+    },
+    canceladas: {
+      t: "Canceladas", file: "canceladas",
+      desc: "Notas de saída canceladas no Protheus (livro fiscal). Por isso não têm nota de devolução.",
+      empty: "Nenhuma nota desta lista está cancelada.",
+      cols: [PED, { k: "nota", t: "Nota" }, { k: "serie", t: "Série" },
+        { k: "emissao", t: "Emissão", fmt: fmtData }, { k: "dt_cancelamento", t: "Cancelada em", fmt: fmtData },
+        { k: "observacao", t: "Situação", badge: "bad" }]
+    },
+    pendentes: {
+      t: "Sem devolução", file: "sem_devolucao",
+      desc: "Notas válidas (não canceladas) que ainda não têm nota de devolução.",
+      empty: "Tudo certo: não há notas válidas sem devolução nesta lista.",
+      cols: [PED, { k: "nota", t: "Nota" }, { k: "serie", t: "Série" }, { k: "emissao", t: "Emissão", fmt: fmtData }]
+    },
+    nao: {
+      t: "Não encontradas", file: "nao_encontradas",
+      desc: "Números que não aparecem como nota de saída nesta filial. Confira a filial ou o número da nota.",
+      empty: "",
+      cols: [{ k: "nota", t: "Nota" }]
+    }
+  };
+  var ORDER = ["devolvidas", "canceladas", "pendentes", "nao"];
+  var state = { data: null, tab: "devolvidas", sortKey: null, sortDir: 1, ctrl: null, timer: null, filial: "" };
+
+  function toast(msg) { var t = $("toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(t._h); t._h = setTimeout(function () { t.classList.remove("show"); }, 1700); }
+  function copy(text, msg) {
+    (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(function () { toast(msg || "Copiado"); }, function () {
+      var ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy"); toast(msg || "Copiado"); } catch (_) { toast("Não foi possível copiar"); }
+      ta.remove();
+    });
+  }
+
+  // ---- navegação lateral ----
+  document.querySelectorAll(".seg button").forEach(function (b) {
+    b.addEventListener("click", function () {
+      document.querySelectorAll(".seg button").forEach(function (x) { x.classList.toggle("on", x === b); });
+      var v = b.getAttribute("data-view");
+      $("view-consulta").hidden = v !== "consulta"; $("view-ajuda").hidden = v !== "ajuda";
+    });
+  });
+  if (store("dev_mini") === "1") $("app").classList.add("mini");
+  $("btnCollapse").addEventListener("click", function () {
+    var on = $("app").classList.toggle("mini"); store("dev_mini", on ? "1" : "0");
+    this.title = on ? "Expandir menu" : "Retrair menu";
+  });
+
+  // ---- notas coladas ----
+  function parseNotas(txt) {
+    var tokens = txt.match(/\d+/g) || [];
+    var ok = [], seen = {}, ignoradas = 0, dup = 0;
+    tokens.forEach(function (t) {
+      if (t.length > 9) { ignoradas++; return; }
+      var n = t.padStart(9, "0");
+      if (seen[n]) { dup++; return; }
+      seen[n] = 1; ok.push(n);
+    });
+    return { notas: ok, ignoradas: ignoradas, dup: dup };
+  }
+  function updateParseInfo() {
+    var p = parseNotas($("notas").value);
+    var parts = [];
+    if (!p.notas.length) parts.push("Nenhuma nota informada.");
+    else parts.push("<b>" + plural(p.notas.length, "nota reconhecida", "notas reconhecidas") + "</b>");
+    if (p.dup) parts.push(plural(p.dup, "repetida removida", "repetidas removidas"));
+    if (p.ignoradas) parts.push(plural(p.ignoradas, "número com mais de 9 dígitos ignorado", "números com mais de 9 dígitos ignorados"));
+    if (p.notas.length > 1000) parts.push("<span style='color:var(--err)'>máximo de 1.000 por consulta</span>");
+    $("parseInfo").innerHTML = parts.join(" · ");
+    return p;
+  }
+
+  // ---- filiais recentes ----
+  function recentes() { try { return JSON.parse(store("dev_filiais") || "[]"); } catch (_) { return []; } }
+  function salvarFilial(f) {
+    var r = recentes().filter(function (x) { return x !== f; }); r.unshift(f); r = r.slice(0, 8);
+    store("dev_filiais", JSON.stringify(r)); renderFiliais();
+  }
+  function renderFiliais() { $("filiais").innerHTML = recentes().map(function (f) { return "<option value='" + esc(f) + "'>"; }).join(""); }
+
+  // ---- abas e tabela ----
+  function viewCols() { return TABS[state.tab].cols.filter(function (c) { return !c.exportOnly; }); }
+  function cell(c, r) { var v = r[c.k] == null ? "" : r[c.k]; return c.fmt ? c.fmt(v) : v; }
+
+  function renderTabs() {
+    var d = state.data;
+    $("tabs").innerHTML = ORDER.filter(function (k) { return k !== "nao" || d.nao.length; }).map(function (k) {
+      return "<button type='button' role='tab' data-tab='" + k + "' class='" + (k === state.tab ? "on" : "") + "'>" + esc(TABS[k].t) +
+        " <span class='n'>" + nf(d[k].length) + "</span></button>";
+    }).join("");
+    document.querySelectorAll("button.tile").forEach(function (b) { b.classList.toggle("on", b.getAttribute("data-tab") === state.tab); });
+    $("tabDesc").textContent = TABS[state.tab].desc;
+  }
+  function renderHead() {
+    $("thead").innerHTML = viewCols().map(function (c) {
+      var s = state.sortKey === c.k ? (state.sortDir > 0 ? "ascending" : "descending") : "none";
+      return "<th data-k='" + c.k + "' aria-sort='" + s + "'>" + esc(c.t) + "</th>";
+    }).join("");
+  }
+  function visibleRows() {
+    var all = state.data ? state.data[state.tab] : [];
+    var cols = TABS[state.tab].cols;
+    var q = $("filtro").value.trim().toLowerCase();
+    var rows = all;
+    if (q) rows = rows.filter(function (r) { return cols.some(function (c) { return String(cell(c, r)).toLowerCase().indexOf(q) >= 0; }); });
+    if (state.sortKey) {
+      var k = state.sortKey, d = state.sortDir;
+      rows = rows.slice().sort(function (a, b) { var x = a[k] || "", y = b[k] || ""; return x < y ? -d : x > y ? d : 0; });
+    }
+    return rows;
+  }
+  function renderBody() {
+    var rows = visibleRows();
+    var all = state.data[state.tab];
+    $("tbody").innerHTML = rows.map(function (r) {
+      return "<tr>" + viewCols().map(function (c) {
+        var v = cell(c, r);
+        var inner = v ? esc(v) : "<span class='dash'>—</span>";
+        if (c.badge && v) inner = "<span class='badge " + c.badge + "'>" + esc(v) + "</span>";
+        var extra = c.copy && v ? "<button type='button' class='copy' title='Copiar' aria-label='Copiar' data-copy='" + esc(v) + "'>" + COPY_ICON + "</button>" : "";
+        return "<td" + (c.cls ? " class='" + c.cls + "'" : "") + ">" + inner + extra + "</td>";
+      }).join("") + "</tr>";
+    }).join("");
+    var vazio = $("vazio");
+    if (!all.length) { vazio.textContent = TABS[state.tab].empty; vazio.hidden = false; }
+    else if (!rows.length) { vazio.textContent = "Nada corresponde ao filtro."; vazio.hidden = false; }
+    else vazio.hidden = true;
+    $("thead").parentElement.hidden = !all.length;
+  }
+  function setTab(k) {
+    if (!state.data || !TABS[k]) return;
+    state.tab = k; state.sortKey = null; state.sortDir = 1; $("filtro").value = "";
+    renderTabs(); renderHead(); renderBody();
+  }
+
+  function exportCols() { return TABS[state.tab].cols; }
+  function toTSV(rows) {
+    var cols = exportCols();
+    return [cols.map(function (c) { return c.t; }).join("\t")].concat(rows.map(function (r) {
+      return cols.map(function (c) { return cell(c, r); }).join("\t");
+    })).join("\n");
+  }
+  function toCSV(rows) {
+    var cols = exportCols();
+    var q = function (v) { v = String(v == null ? "" : v); return /[;"\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+    var asText = { nota_original: 1, nota_devolucao: 1, chave_nfe: 1, filial: 1, nota: 1 };
+    return "﻿" + [cols.map(function (c) { return q(c.t); }).join(";")].concat(rows.map(function (r) {
+      return cols.map(function (c) { var v = cell(c, r); return asText[c.k] && v ? '="' + v + '"' : q(v); }).join(";");
+    })).join("\r\n");
+  }
+
+  // ---- consulta ----
+  function setLoading(on, n) {
+    $("loading").hidden = !on; $("btnBuscar").disabled = on; $("btnCancelar").hidden = !on;
+    clearInterval(state.timer);
+    if (on) {
+      var t0 = Date.now();
+      $("loadingTit").textContent = "Consultando " + plural(n, "nota", "notas") + " no Protheus…";
+      $("loadingTxt").textContent = "0s · costuma levar de 15 a 60 segundos.";
+      state.timer = setInterval(function () {
+        var s = Math.round((Date.now() - t0) / 1000);
+        $("loadingTxt").textContent = s + "s · " + (s > 60 ? "listas grandes podem levar até 2 minutos." : "costuma levar de 15 a 60 segundos.");
+      }, 1000);
+    }
+  }
+  function showError(msg, tit) {
+    $("erroTit").textContent = tit || "Não foi possível consultar";
+    $("erroTxt").textContent = msg || ""; $("erro").hidden = !msg;
+  }
+
+  function render(d) {
+    state.filial = d.filial;
+    state.data = {
+      devolvidas: d.rows || [],
+      canceladas: d.canceladas || [],
+      pendentes: d.pendentes || [],
+      nao: (d.naoEncontradas || []).map(function (n) { return { nota: n }; })
+    };
+    var tot = d.notasPesquisadas || 0, rs = d.resumo || {};
+    var pct = function (n) { return tot ? Math.round(n / tot * 100) + "% das notas" : ""; };
+    $("kPesq").textContent = nf(tot);
+    $("kFilial").textContent = "Filial " + d.filial + " · " + Math.round((d.tempoMs || 0) / 1000) + "s";
+    $("k-devolvidas").textContent = nf(rs.devolvidas); $("p-devolvidas").textContent = pct(rs.devolvidas);
+    $("k-canceladas").textContent = nf(rs.canceladas); $("p-canceladas").textContent = pct(rs.canceladas);
+    $("k-pendentes").textContent = nf(rs.pendentes); $("p-pendentes").textContent = rs.pendentes ? pct(rs.pendentes) + " · não canceladas" : "nenhuma pendente";
+    $("truncado").hidden = !d.truncado;
+    var ne = state.data.nao.length;
+    var filialErrada = tot > 0 && ne / tot >= 0.5;
+    $("naoEncBox").hidden = !ne;
+    $("naoEncBox").classList.toggle("bad", filialErrada);
+    $("filial").classList.toggle("alerta", filialErrada);
+    if (filialErrada) {
+      $("naoEncTit").textContent = "⚠ Confira a filial: " + nf(ne) + " de " + nf(tot) + " notas não existem na filial " + d.filial;
+      $("naoEncTxt").textContent = "Quase todas as notas coladas não aparecem como nota de saída nesta filial. Provavelmente a filial está errada. Troque o número da filial lá em cima e clique em Buscar devoluções de novo.";
+    } else if (ne) {
+      $("naoEncTit").textContent = plural(ne, "nota não encontrada", "notas não encontradas") + " na filial " + d.filial;
+      $("naoEncTxt").textContent = "Esses números não aparecem como nota de saída nesta filial. Veja a aba Não encontradas e confira a filial ou o número.";
+    }
+    var first = ORDER.filter(function (k) { return state.data[k].length; })[0] || "devolvidas";
+    $("resultado").hidden = false;
+    setTab(first);
+    if (filialErrada) $("naoEncBox").scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
+  function buscar(ev) {
+    if (ev) ev.preventDefault();
+    if (state.ctrl) return;
+    showError("");
+    var filial = $("filial").value.trim();
+    if (!/^\d{4}$/.test(filial)) { showError("Informe a filial com 4 dígitos (ex.: 1401).", "Filial inválida"); $("filial").focus(); return; }
+    var p = updateParseInfo();
+    if (!p.notas.length) { showError("Cole ao menos uma nota original no campo de notas.", "Nenhuma nota informada"); $("notas").focus(); return; }
+    if (p.notas.length > 1000) { showError("O máximo é 1.000 notas por consulta. Divida a lista em partes.", "Muitas notas"); return; }
+
+    salvarFilial(filial);
+    state.ctrl = new AbortController();
+    setLoading(true, p.notas.length);
+    fetch("/api/consulta", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ filial: filial, notas: p.notas }), signal: state.ctrl.signal
+    }).then(function (r) {
+      return r.text().then(function (t) {
+        var d; try { d = JSON.parse(t); } catch (_) { throw new Error("Resposta inesperada do servidor (" + r.status + ")."); }
+        if (!r.ok) throw new Error(d.error + (d.detalhe ? " — " + d.detalhe : ""));
+        return d;
+      });
+    }).then(render).catch(function (e) {
+      if (e.name === "AbortError") showError("A consulta foi cancelada. Clique em Buscar devoluções para tentar de novo.", "Consulta cancelada");
+      else showError(e.message || "Erro ao consultar.");
+    }).then(function () { setLoading(false); state.ctrl = null; });
+  }
+
+  // ---- eventos ----
+  $("form").addEventListener("submit", buscar);
+  $("notas").addEventListener("input", updateParseInfo);
+  $("filial").addEventListener("input", function () { this.value = this.value.replace(/\D/g, "").slice(0, 4); this.classList.remove("alerta"); });
+  document.addEventListener("keydown", function (e) { if ((e.ctrlKey || e.metaKey) && e.key === "Enter" && !$("view-consulta").hidden) buscar(e); });
+  $("btnCancelar").addEventListener("click", function () { if (state.ctrl) state.ctrl.abort(); });
+  $("btnLimpar").addEventListener("click", function () { $("notas").value = ""; updateParseInfo(); showError(""); $("resultado").hidden = true; $("notas").focus(); });
+  $("filtro").addEventListener("input", renderBody);
+  $("tabs").addEventListener("click", function (e) { var b = e.target.closest("[data-tab]"); if (b) setTab(b.getAttribute("data-tab")); });
+  document.querySelectorAll("button.tile").forEach(function (b) { b.addEventListener("click", function () { setTab(b.getAttribute("data-tab")); }); });
+  $("thead").addEventListener("click", function (e) {
+    var th = e.target.closest("th"); if (!th) return;
+    var k = th.getAttribute("data-k");
+    if (state.sortKey === k) state.sortDir = -state.sortDir; else { state.sortKey = k; state.sortDir = 1; }
+    renderHead(); renderBody();
+  });
+  $("tbody").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-copy]"); if (b) copy(b.getAttribute("data-copy"), "Copiado");
+  });
+  $("btnCopiarTabela").addEventListener("click", function () { copy(toTSV(visibleRows()), "Tabela copiada, pode colar no Excel"); });
+  $("btnCsv").addEventListener("click", function () {
+    var blob = new Blob([toCSV(visibleRows())], { type: "text/csv;charset=utf-8" });
+    var a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+    a.download = TABS[state.tab].file + "_filial_" + state.filial + "_" + new Date().toISOString().slice(0, 10) + ".csv";
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+  });
+
+  // ---- usuário ----
+  function setUser(email) {
+    if (!email) return;
+    var parts = email.split("@")[0].split(/[._-]+/).filter(Boolean);
+    var nome = parts.map(function (p) { return p.charAt(0).toUpperCase() + p.slice(1); }).join(" ");
+    var ini = (parts[0] ? parts[0][0] : "") + (parts[1] ? parts[1][0] : (parts[0] && parts[0][1]) || "");
+    $("avatar").textContent = ini.toUpperCase();
+    $("userName").textContent = nome; $("userMail").textContent = email;
+    $("user").title = email; $("user").hidden = false;
+  }
+
+  // ---- início ----
+  renderFiliais();
+  var last = recentes()[0]; if (last) $("filial").value = last;
+  fetch("/api/status").then(function (r) { return r.json(); }).then(function (s) {
+    setUser(s.email);
+    if (!s.chaveConfigurada) showError("A chave da API do Metabase ainda não foi configurada no app.", "App sem conexão com o Metabase");
+  }).catch(function () {});
+})();
+</script>
+</body>
+</html>
